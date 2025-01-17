@@ -2,6 +2,29 @@
 
 A collection of web scraping and content extraction tools using the FireCrawl API.
 
+## Project Structure
+
+```bash
+FireScraper/
+├── api/                     # API server
+│   ├── src/                # Source code
+│   │   ├── controllers/    # Request handlers
+│   │   ├── routes/        # API routes
+│   │   ├── services/      # Business logic
+│   │   └── scraper/       # Scraping logic
+│   ├── package.json       # API dependencies
+│   └── pnpm-lock.yaml     # Lock file
+├── docs/                   # Documentation
+│   └── API_REFERENCE.md    # API endpoint documentation
+├── scripts/                # Utility scripts
+│   ├── claude_firecrawl.py  # Intelligent search and extraction
+│   ├── claude_scrape_page.py # Single page analysis
+│   └── crawl.py             # Full site archival
+├── .env.example           # Example environment variables for Python scripts
+├── README.md               # Project overview
+└── requirements.txt        # Python dependencies
+```
+
 ## Scripts Overview
 
 ### 1. `claude_firecrawl.py` - Intelligent Search & Content Extraction
@@ -47,21 +70,55 @@ A collection of web scraping and content extraction tools using the FireCrawl AP
 
 ## Setup
 
-1. Install dependencies:
+### Python Scripts
+
+1. Install Python dependencies:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-2. Set up environment variables:
+### API Setup (using pnpm)
+
+1. Install pnpm if you haven't already:
+
+   ```bash
+   # Using npm
+   npm install -g pnpm
+   # Or using Homebrew on macOS
+   brew install pnpm
+   ```
+
+2. Install API dependencies:
+
+   ```bash
+   cd api
+   pnpm install
+   ```
+
+3. Start the API in development mode:
+
+   ```bash
+   pnpm start:dev
+   ```
+
+Common API commands:
+
+- `pnpm start:dev` - Start development server with hot reload
+- `pnpm build` - Build the project
+- `pnpm test` - Run tests
+- `pnpm format` - Format code using Prettier
+
+### Environment Setup
+
+1. Set up environment variables:
 
    ```bash
    cp .env.example .env
    # Edit .env with your API keys
    ```
 
-3. Required API keys:
-
+2. Required API keys:
    - `FIRECRAWL_API_KEY` - For FireCrawl API access
    - `ANTHROPIC_API_KEY` - For Claude AI integration (not needed for crawl.py)
 
