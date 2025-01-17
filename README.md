@@ -248,8 +248,64 @@ python claude_scraper.py
 ### Full Site Crawl
 
 ```bash
-python crawl.py <url>
+# Interactive mode (recommended for new users):
+python crawl.py
+
+# Command-line mode (for automation/scripts):
+python crawl.py <url> [options]
 ```
+
+The crawler now offers two modes of operation:
+
+1. **Interactive Mode** (New!)
+
+   - Launches automatically when run without arguments
+   - User-friendly guided configuration
+   - Color-coded interface
+   - Organized into sections:
+     - Basic Configuration
+     - Crawl Behavior
+     - Content Filtering
+     - Output Options
+     - Advanced Options
+
+2. **Command-line Mode**
+   - Ideal for automation and scripts
+   - All options available as command-line arguments
+   - Same functionality as interactive mode
+
+**Interactive Mode Sections:**
+
+```
+=== Web Crawler Configuration ===
+• URL Configuration
+  - Website URL to crawl
+
+=== Crawl Behavior ===
+• Depth and Scope
+  - Maximum crawl depth
+  - Maximum pages to crawl
+  - External link handling
+  - Subdomain handling
+
+=== Content Filtering ===
+• Language and Pattern Control
+  - Languages to include
+  - URL patterns to exclude
+  - URL patterns to include
+
+=== Output Options ===
+• File Management
+  - Custom output directory
+  - Raw HTML saving option
+  - Progress check interval
+
+=== Advanced Options ===
+• Technical Settings
+  - API timeout configuration
+```
+
+**Command-line Options**:
 
 ## Output Formats
 

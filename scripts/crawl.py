@@ -96,6 +96,105 @@ class CrawlConfig:
             f"  {Colors.CYAN}Save HTML:{Colors.RESET} {'Yes' if self.save_raw_html else 'No'}\n"
         )
 
+    @classmethod
+    def from_interactive(cls):
+        """Create configuration from interactive user input."""
+        print(f"\n{Colors.BLUE}=== Web Crawler Configuration ==={Colors.RESET}")
+
+        # Get required URL
+        while True:
+            url = input(
+                f"\n{Colors.CYAN}Enter website URL to crawl:{Colors.RESET} "
+            ).strip()
+            if url and (url.startswith("http://") or url.startswith("https://")):
+                break
+            print(
+                f"{Colors.RED}Please enter a valid URL starting with http:// or https://{Colors.RESET}"
+            )
+
+        # Crawl Behavior
+        print(f"\n{Colors.MAGENTA}=== Crawl Behavior ==={Colors.RESET}")
+        max_depth = int(
+            input(f"{Colors.CYAN}Maximum crawl depth (default 10):{Colors.RESET} ")
+            or "10"
+        )
+        max_pages = input(
+            f"{Colors.CYAN}Maximum pages to crawl (Enter for unlimited):{Colors.RESET} "
+        ).strip()
+        max_pages = int(max_pages) if max_pages else None
+
+        allow_external = (
+            input(f"{Colors.CYAN}Allow external links? (y/N):{Colors.RESET} ")
+            .lower()
+            .startswith("y")
+        )
+        allow_subdomains = (
+            input(f"{Colors.CYAN}Allow subdomains? (Y/n):{Colors.RESET} ").lower()
+            != "n"
+        )
+
+        # Content Filtering
+        print(f"\n{Colors.MAGENTA}=== Content Filtering ==={Colors.RESET}")
+        languages_input = input(
+            f"{Colors.CYAN}Languages to include (space-separated, default 'en'):{Colors.RESET} "
+        ).strip()
+        languages = set(languages_input.split()) if languages_input else {"en"}
+
+        exclude_input = input(
+            f"{Colors.CYAN}URL patterns to exclude (space-separated, e.g., '/blog/* /archive/*'):{Colors.RESET} "
+        ).strip()
+        exclude_patterns = exclude_input.split() if exclude_input else None
+
+        include_input = input(
+            f"{Colors.CYAN}URL patterns to include (space-separated, e.g., '/docs/*'):{Colors.RESET} "
+        ).strip()
+        include_patterns = include_input.split() if include_input else None
+
+        # Output Options
+        print(f"\n{Colors.MAGENTA}=== Output Options ==={Colors.RESET}")
+        output_dir = (
+            input(
+                f"{Colors.CYAN}Output directory (Enter for default 'crawls/<domain>'):{Colors.RESET} "
+            ).strip()
+            or None
+        )
+        save_raw_html = (
+            input(f"{Colors.CYAN}Save raw HTML? (y/N):{Colors.RESET} ")
+            .lower()
+            .startswith("y")
+        )
+
+        check_interval = int(
+            input(
+                f"{Colors.CYAN}Progress check interval in seconds (default 5):{Colors.RESET} "
+            )
+            or "5"
+        )
+
+        # Advanced Options
+        print(f"\n{Colors.MAGENTA}=== Advanced Options ==={Colors.RESET}")
+        timeout = int(
+            input(
+                f"{Colors.CYAN}API timeout in milliseconds (default 30000):{Colors.RESET} "
+            )
+            or "30000"
+        )
+
+        return cls(
+            url=url,
+            max_depth=max_depth,
+            allow_external=allow_external,
+            allow_subdomains=allow_subdomains,
+            languages=languages,
+            exclude_patterns=exclude_patterns,
+            include_patterns=include_patterns,
+            timeout=timeout,
+            max_pages=max_pages,
+            save_raw_html=save_raw_html,
+            output_dir=output_dir,
+            check_interval=check_interval,
+        )
+
 
 def is_english_page(url: str, metadata: dict, config: CrawlConfig) -> bool:
     """Check if a page matches the language requirements."""
@@ -374,6 +473,24 @@ def parse_args():
     return config
 
 
-if __name__ == "__main__":
-    config = parse_args()
+def main():
+    """Main entry point with interactive or command-line modes."""
+    if len(sys.argv) > 1:
+        # Use command-line mode if arguments are provided
+        config = parse_args()
+    else:
+        # Use interactive mode if no arguments
+        print(f"\n{Colors.GREEN}Welcome to the Web Crawler!{Colors.RESET}")
+        print(
+            f"{Colors.BLUE}No command-line arguments detected. Starting interactive mode...{Colors.RESET}"
+        )
+        print(
+            f"{Colors.YELLOW}Tip: Use command-line arguments for automated/scripted usage.{Colors.RESET}"
+        )
+        config = CrawlConfig.from_interactive()
+
     crawl_and_save(config)
+
+
+if __name__ == "__main__":
+    main()
