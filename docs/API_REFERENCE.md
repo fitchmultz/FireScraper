@@ -8,6 +8,16 @@ All endpoints require an API key passed in the `Authorization` header:
 Authorization: Bearer YOUR_API_KEY
 ```
 
+## Common Headers
+
+### Idempotency
+
+For POST requests that modify state, you can include an idempotency key:
+
+```txt
+X-Idempotency-Key: <unique-key>
+```
+
 ## Core Endpoints
 
 ### Scraping
@@ -38,6 +48,10 @@ Single page scraping with JavaScript rendering.
 }
 ```
 
+#### `GET /v1/scrape/:jobId`
+
+Get status and results of a scrape job.
+
 #### `POST /v1/batch/scrape`
 
 Scrape multiple URLs in parallel.
@@ -51,9 +65,9 @@ Scrape multiple URLs in parallel.
 }
 ```
 
-#### `GET /v1/scrape/:jobId`
+#### `GET /v1/batch/scrape/:jobId`
 
-Get status of a scrape job.
+Get status and results of a batch scrape job.
 
 ### Crawling
 
@@ -141,7 +155,7 @@ Extract specific content from URLs.
 
 #### `GET /v1/extract/:jobId`
 
-Get extraction job status.
+Get extraction job status and results.
 
 ### Search
 
@@ -182,11 +196,36 @@ Check concurrent job limits and availability.
 
 ## Rate Limiting
 
-- Each endpoint has specific rate limits
-- Rate limit information is returned in response headers:
-  - `X-RateLimit-Limit`
-  - `X-RateLimit-Remaining`
-  - `X-RateLimit-Reset`
+Each endpoint has specific rate limiting modes:
+
+- Scrape mode for scraping endpoints
+- Crawl mode for crawling endpoints
+- Map mode for mapping endpoints
+- Search mode for search endpoints
+- Extract mode for extraction endpoints
+- CrawlStatus mode for status endpoints
+
+Rate limit information is returned in response headers:
+
+- `X-RateLimit-Limit`
+- `X-RateLimit-Remaining`
+- `X-RateLimit-Reset`
+
+## Credit System
+
+Each request requires a minimum number of credits:
+
+- Single page operations: 1 credit
+- Batch operations: 1 credit per URL
+- Search operations: Based on limit parameter
+- Map operations: 1 credit minimum
+
+Insufficient credits will result in a 402 Payment Required response.
+
+## URL Restrictions
+
+Some URLs may be blocked for various reasons (e.g., security, terms of service).
+Attempting to access blocked URLs will result in a 403 Forbidden response.
 
 ## Error Responses
 
@@ -204,7 +243,8 @@ Common HTTP status codes:
 - `400` - Bad Request
 - `401` - Unauthorized
 - `402` - Payment Required (insufficient credits)
-- `403` - Forbidden
+- `403` - Forbidden (including blocked URLs)
+- `409` - Conflict (duplicate idempotency key)
 - `429` - Too Many Requests
 - `500` - Internal Server Error
 
@@ -222,6 +262,11 @@ Common HTTP status codes:
    - Implement proper error handling
 
 3. **Performance**
+
    - Use WebSocket connections for long-running jobs
    - Implement proper timeout handling
    - Cache results when appropriate
+
+4. **Idempotency**
+   - Use idempotency keys for state-changing operations
+   - Store and reuse idempotency keys for retries
