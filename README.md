@@ -80,6 +80,8 @@ FireScraper/
 
 ### API Setup (using pnpm)
 
+> **Important**: The API project specifically uses pnpm and is not configured for npm. Please use pnpm for dependency management.
+
 1. Install pnpm if you haven't already:
 
    ```bash
@@ -102,12 +104,14 @@ FireScraper/
    pnpm start:dev
    ```
 
-Common API commands:
+Common API commands (always use pnpm, not npm):
 
 - `pnpm start:dev` - Start development server with hot reload
 - `pnpm build` - Build the project
 - `pnpm test` - Run tests
 - `pnpm format` - Format code using Prettier
+- `pnpm add <package>` - Add a new dependency
+- `pnpm remove <package>` - Remove a dependency
 
 ### Environment Setup
 
