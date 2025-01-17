@@ -55,16 +55,21 @@ class CrawlConfig:
 
     def to_api_params(self) -> dict:
         """Convert config to API parameters."""
-        return {
+        params = {
             "url": self.url,
-            "allowExternalLinks": self.allow_external,
-            "allowSubdomains": self.allow_subdomains,
             "maxDepth": self.max_depth,
-            "timeout": self.timeout,
-            "limit": self.max_pages,
-            "excludePatterns": self.exclude_patterns,
-            "includePatterns": self.include_patterns,
+            "allowSubdomains": self.allow_subdomains,
+            "limit": self.max_pages,  # API expects 'limit' not 'maxPages'
+            "allowExternalLinks": self.allow_external,  # API expects 'allowExternalLinks' not 'allowExternal'
         }
+
+        # Only include optional patterns if they have values
+        if self.exclude_patterns:
+            params["excludePatterns"] = self.exclude_patterns
+        if self.include_patterns:
+            params["includePatterns"] = self.include_patterns
+
+        return params
 
     def display_config(self):
         """Display current configuration in a user-friendly format."""
@@ -106,11 +111,34 @@ class CrawlConfig:
             url = input(
                 f"\n{Colors.CYAN}Enter website URL to crawl:{Colors.RESET} "
             ).strip()
-            if url and (url.startswith("http://") or url.startswith("https://")):
-                break
-            print(
-                f"{Colors.RED}Please enter a valid URL starting with http:// or https://{Colors.RESET}"
-            )
+
+            # Silently add https:// if no protocol specified
+            if not url.startswith(("http://", "https://")):
+                url = f"https://{url}"
+
+            try:
+                # Test if URL is reachable
+                response = requests.head(url, timeout=5)
+                if (
+                    response.ok or response.status_code == 405
+                ):  # 405 = Method not allowed but URL exists
+                    break
+
+                # If https:// fails, try http:// silently
+                if url.startswith("https://"):
+                    http_url = url.replace("https://", "http://")
+                    response = requests.head(http_url, timeout=5)
+                    if response.ok or response.status_code == 405:
+                        url = http_url
+                        break
+
+                print(
+                    f"{Colors.RED}Could not access URL. Please check the URL and try again.{Colors.RESET}"
+                )
+            except requests.exceptions.RequestException:
+                print(
+                    f"{Colors.RED}Could not connect to URL. Please check the URL and try again.{Colors.RESET}"
+                )
 
         # Crawl Behavior
         print(f"\n{Colors.MAGENTA}=== Crawl Behavior ==={Colors.RESET}")
