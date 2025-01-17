@@ -59,7 +59,9 @@ class CrawlConfig:
             "url": self.url,
             "maxDepth": self.max_depth,
             "allowSubdomains": self.allow_subdomains,
-            "limit": self.max_pages,  # API expects 'limit' not 'maxPages'
+            "limit": (
+                self.max_pages if self.max_pages is not None else 1000000
+            ),  # Use large number for "unlimited"
             "allowExternalLinks": self.allow_external,  # API expects 'allowExternalLinks' not 'allowExternal'
         }
 
