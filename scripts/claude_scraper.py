@@ -11,6 +11,15 @@ from firecrawl import FirecrawlApp
 class Mode(Enum):
     SEARCH = "search"  # Intelligent search across site
     ANALYZE = "analyze"  # Single page analysis
+    BATCH = "batch"  # Process multiple URLs in parallel
+    EXTRACT = "extract"  # Extract specific content using selectors
+    DEEP_SEARCH = "deep_search"  # Combined search across multiple modes
+
+
+class SearchType(Enum):
+    QUICK = "quick"  # Quick search using map endpoint
+    DEEP = "deep"  # Deep search with content analysis
+    SELECTIVE = "selective"  # Search with specific content filters
 
 
 # ANSI color codes
@@ -155,107 +164,362 @@ class ClaudeScraper:
             print(f"{Colors.RED}Error processing content: {str(e)}{Colors.RESET}")
             return None
 
-    def search_content(self, objective: str, url: str) -> Optional[Dict]:
-        """Search for specific content across pages."""
+    def search_content(
+        self, objective: str, url: str, search_type: SearchType = SearchType.QUICK
+    ) -> Optional[Dict]:
+        """Enhanced search with different search types."""
         try:
-            # Find relevant pages
-            map_website = self.find_relevant_pages(objective, url)
-            if not map_website:
-                return None
-
-            # Get top 2 links from the map result
-            top_links = map_website[:2]
             print(
-                f"{Colors.CYAN}Proceeding to analyze top {len(top_links)} links: {top_links}{Colors.RESET}"
+                f"{Colors.CYAN}Initiating {search_type.value} search for: {objective}{Colors.RESET}"
+            )
+            print(f"{Colors.CYAN}Target website: {url}{Colors.RESET}")
+
+            if search_type == SearchType.QUICK:
+                return self._quick_search(objective, url)
+            elif search_type == SearchType.DEEP:
+                return self._deep_search(objective, url)
+            elif search_type == SearchType.SELECTIVE:
+                return self._selective_search(objective, url)
+
+        except Exception as e:
+            print(f"{Colors.RED}Error during search: {str(e)}{Colors.RESET}")
+            return None
+
+    def _quick_search(self, objective: str, url: str) -> Optional[Dict]:
+        """Quick search using map endpoint."""
+        try:
+            map_prompt = f"""
+            The map function generates a list of URLs from a website and it accepts a search parameter.
+            Based on the objective of: {objective}, come up with a 1-2 word search parameter that will help us find the information we need.
+            Only respond with 1-2 words nothing else.
+            """
+
+            completion = self.client.messages.create(
+                model=self.model_name,
+                max_tokens=self.max_tokens,
+                temperature=0,
+                system="You are an expert web crawler. Respond with the BEST search parameter.",
+                messages=[{"role": "user", "content": map_prompt}],
             )
 
-            # Analyze each page
-            for url in top_links:
+            map_search_parameter = completion.content[0].text
+            print(
+                f"{Colors.GREEN}Search parameter: {map_search_parameter}{Colors.RESET}"
+            )
+
+            map_website = self.app.map_url(url, params={"search": map_search_parameter})
+            if not map_website["links"]:
+                return None
+
+            # Get first relevant link and analyze
+            target_url = map_website["links"][0]
+            result = self.app.scrape_url(target_url, {"formats": ["markdown"]})
+
+            return {
+                "source_url": target_url,
+                "relevant_info": result["markdown"],
+                "search_type": "quick",
+                "search_parameter": map_search_parameter,
+            }
+        except Exception as e:
+            print(f"{Colors.RED}Error in quick search: {str(e)}{Colors.RESET}")
+            return None
+
+    def _deep_search(self, objective: str, url: str) -> Optional[Dict]:
+        """Deep search with content analysis."""
+        try:
+            # First get potential URLs
+            map_website = self.app.map_url(url)
+            results = []
+
+            # Analyze top 5 pages in detail
+            for target_url in map_website["links"][:5]:
                 try:
-                    result = self.app.scrape_url(
-                        url, {"formats": ["markdown"], "timeout": 30000}
-                    )
-                    check_prompt = f"""
-                    Given the following scraped content and objective, determine if the objective is met.
-                    If it is, extract the relevant information in a simple and concise JSON format. Use only the necessary fields and avoid nested structures if possible.
-                    If the objective is not met with confidence, respond with 'Objective not met'.
+                    result = self.app.scrape_url(target_url, {"formats": ["markdown"]})
 
-                    Objective: {objective}
-                    Scraped content: {result['markdown']}
+                    # Use Claude to analyze content relevance
+                    analysis_prompt = f"""
+                    Analyze this content and determine its relevance to the objective: {objective}
+                    Return a JSON with these fields:
+                    - relevance_score (0-100)
+                    - key_points (list of relevant points)
+                    - matches_objective (boolean)
+                    Only return valid JSON, no other text.
 
-                    Remember:
-                    1. Only return JSON if you are confident the objective is fully met.
-                    2. Keep the JSON structure as simple and flat as possible.
-                    3. Do not include any explanations or markdown formatting in your response.
+                    Content: {result["markdown"][:5000]}
                     """
 
                     completion = self.client.messages.create(
                         model=self.model_name,
                         max_tokens=1000,
                         temperature=0,
-                        system="You are an expert web crawler. Respond with the relevant information in JSON format.",
-                        messages=[{"role": "user", "content": check_prompt}],
+                        system="You are an expert content analyzer. Return only valid JSON.",
+                        messages=[{"role": "user", "content": analysis_prompt}],
                     )
 
-                    result = completion.content[0].text
-                    if result != "Objective not met":
-                        try:
-                            return json.loads(result)
-                        except json.JSONDecodeError:
-                            print(
-                                f"{Colors.RED}Error parsing response. Proceeding to next page...{Colors.RESET}"
-                            )
+                    analysis = json.loads(completion.content[0].text)
+                    if analysis["matches_objective"]:
+                        results.append(
+                            {
+                                "url": target_url,
+                                "content": result["markdown"],
+                                "analysis": analysis,
+                            }
+                        )
+
                 except Exception as e:
-                    print(f"{Colors.RED}Error processing {url}: {str(e)}{Colors.RESET}")
+                    print(
+                        f"{Colors.YELLOW}Error analyzing {target_url}: {str(e)}{Colors.RESET}"
+                    )
                     continue
 
-            print(
-                f"{Colors.RED}All available pages analyzed. Objective not fulfilled.{Colors.RESET}"
-            )
+            if results:
+                # Sort by relevance score
+                results.sort(
+                    key=lambda x: x["analysis"]["relevance_score"], reverse=True
+                )
+                return {
+                    "search_type": "deep",
+                    "results": results,
+                    "total_analyzed": len(map_website["links"][:5]),
+                }
             return None
 
         except Exception as e:
-            print(f"{Colors.RED}Error during content search: {str(e)}{Colors.RESET}")
+            print(f"{Colors.RED}Error in deep search: {str(e)}{Colors.RESET}")
+            return None
+
+    def _selective_search(self, objective: str, url: str) -> Optional[Dict]:
+        """Search with specific content filters."""
+        try:
+            # First get potential URLs
+            map_website = self.app.map_url(url)
+
+            # Use Claude to generate optimal selectors based on objective
+            selector_prompt = f"""
+            Based on this search objective, generate CSS selectors that would best target the relevant content.
+            Return a JSON object with selector names and values.
+            Objective: {objective}
+            Example format: {{"price": ".product-price", "title": "h1.product-title"}}
+            Only return valid JSON, no other text.
+            """
+
+            completion = self.client.messages.create(
+                model=self.model_name,
+                max_tokens=500,
+                temperature=0,
+                system="You are an expert at CSS selectors. Return only valid JSON.",
+                messages=[{"role": "user", "content": selector_prompt}],
+            )
+
+            selectors = json.loads(completion.content[0].text)
+            print(
+                f"{Colors.GREEN}Generated selectors: {json.dumps(selectors, indent=2)}{Colors.RESET}"
+            )
+
+            results = []
+            for target_url in map_website["links"][:3]:
+                try:
+                    # Extract specific content using selectors
+                    extracted = self.extract_content_with_selectors(
+                        target_url, selectors
+                    )
+                    if extracted:
+                        results.append(
+                            {"url": target_url, "extracted_content": extracted}
+                        )
+                except Exception as e:
+                    print(
+                        f"{Colors.YELLOW}Error processing {target_url}: {str(e)}{Colors.RESET}"
+                    )
+                    continue
+
+            if results:
+                return {
+                    "search_type": "selective",
+                    "selectors_used": selectors,
+                    "results": results,
+                }
+            return None
+
+        except Exception as e:
+            print(f"{Colors.RED}Error in selective search: {str(e)}{Colors.RESET}")
+            return None
+
+    def batch_process(self, urls: List[str]) -> List[Dict]:
+        """Process multiple URLs in parallel."""
+        try:
+            print(
+                f"{Colors.CYAN}Processing {len(urls)} URLs in parallel...{Colors.RESET}"
+            )
+
+            # Call batch scrape endpoint
+            results = self.app.batch_scrape_urls(urls, {"formats": ["markdown"]})
+
+            # Process each result with Claude
+            processed_results = []
+            for result in results:
+                if "markdown" in result:
+                    processed = self.analyze_content(result["metadata"]["url"])
+                    if processed:
+                        processed_results.append(processed)
+
+            return processed_results
+        except Exception as e:
+            print(f"{Colors.RED}Error during batch processing: {str(e)}{Colors.RESET}")
+            return None
+
+    def extract_content_with_selectors(
+        self, url: str, selectors: Dict[str, str]
+    ) -> Optional[Dict]:
+        """Extract specific content using CSS selectors."""
+        try:
+            print(f"{Colors.CYAN}Extracting content from: {url}{Colors.RESET}")
+            print(
+                f"{Colors.YELLOW}Using selectors: {json.dumps(selectors, indent=2)}{Colors.RESET}"
+            )
+
+            # Call extract endpoint
+            result = self.app.extract_content(url, selectors)
+
+            if result:
+                print(f"{Colors.GREEN}Content extracted successfully.{Colors.RESET}")
+                return result
+            return None
+        except Exception as e:
+            print(
+                f"{Colors.RED}Error during content extraction: {str(e)}{Colors.RESET}"
+            )
             return None
 
     def process(
-        self, mode: Mode, url: str, objective: Optional[str] = None
+        self,
+        mode: Mode,
+        url: str,
+        objective: Optional[str] = None,
+        urls: Optional[List[str]] = None,
+        selectors: Optional[Dict[str, str]] = None,
     ) -> Optional[Dict]:
-        """Main processing function that handles both modes."""
+        """Main processing function that handles all modes."""
         if mode == Mode.SEARCH:
             if not objective:
                 raise ValueError("Objective is required for search mode")
             return self.search_content(objective, url)
-        else:  # Mode.ANALYZE
+        elif mode == Mode.ANALYZE:
             return self.analyze_content(url)
+        elif mode == Mode.BATCH:
+            if not urls:
+                raise ValueError("URLs list is required for batch mode")
+            return self.batch_process(urls)
+        elif mode == Mode.EXTRACT:
+            if not selectors:
+                raise ValueError("Selectors are required for extract mode")
+            return self.extract_content_with_selectors(url, selectors)
 
 
 def main():
     """CLI entry point."""
-    print(f"{Colors.BLUE}Select mode:{Colors.RESET}")
-    print(
-        f"1. {Colors.CYAN}Search{Colors.RESET} - Find specific information across pages"
-    )
-    print(f"2. {Colors.CYAN}Analyze{Colors.RESET} - Detailed analysis of a single page")
-
-    mode_input = input(f"{Colors.BLUE}Enter mode (1 or 2): {Colors.RESET}")
-    mode = Mode.SEARCH if mode_input == "1" else Mode.ANALYZE
-
-    url = input(f"{Colors.BLUE}Enter the website URL: {Colors.RESET}")
-    if not url.strip():
-        url = "https://www.firecrawl.dev/"
-
-    objective = None
-    if mode == Mode.SEARCH:
-        objective = input(f"{Colors.BLUE}Enter your search objective: {Colors.RESET}")
-        if not objective.strip():
-            objective = "find me the pricing plans"
-
-    print(f"{Colors.YELLOW}Initiating {mode.value} mode...{Colors.RESET}")
-
     try:
+        # Initialize scraper
         scraper = ClaudeScraper()
-        result = scraper.process(mode, url, objective)
+
+        print(f"{Colors.BLUE}Select mode:{Colors.RESET}")
+        print(
+            f"1. {Colors.CYAN}Search{Colors.RESET} - Find specific information across pages"
+        )
+        print(
+            f"2. {Colors.CYAN}Analyze{Colors.RESET} - Detailed analysis of a single page"
+        )
+        print(
+            f"3. {Colors.CYAN}Batch{Colors.RESET} - Process multiple URLs in parallel"
+        )
+        print(
+            f"4. {Colors.CYAN}Extract{Colors.RESET} - Extract specific content using selectors"
+        )
+        print(f"5. {Colors.CYAN}Deep Search{Colors.RESET} - Advanced multi-mode search")
+
+        mode_input = input(f"{Colors.BLUE}Enter mode (1-5): {Colors.RESET}")
+        mode = {
+            "1": Mode.SEARCH,
+            "2": Mode.ANALYZE,
+            "3": Mode.BATCH,
+            "4": Mode.EXTRACT,
+            "5": Mode.DEEP_SEARCH,
+        }.get(mode_input, Mode.ANALYZE)
+
+        if mode in [Mode.SEARCH, Mode.DEEP_SEARCH]:
+            url = input(f"{Colors.BLUE}Enter the website URL: {Colors.RESET}")
+            if not url.strip():
+                url = "https://www.firecrawl.dev/"
+
+            objective = input(
+                f"{Colors.BLUE}Enter your search objective: {Colors.RESET}"
+            )
+            if not objective.strip():
+                objective = "find me the pricing plans"
+
+            if mode == Mode.DEEP_SEARCH:
+                print(f"\n{Colors.BLUE}Select search type:{Colors.RESET}")
+                print(
+                    f"1. {Colors.CYAN}Quick{Colors.RESET} - Fast search using map endpoint"
+                )
+                print(f"2. {Colors.CYAN}Deep{Colors.RESET} - Detailed content analysis")
+                print(
+                    f"3. {Colors.CYAN}Selective{Colors.RESET} - Search with content filters"
+                )
+
+                search_type_input = input(
+                    f"{Colors.BLUE}Enter search type (1-3): {Colors.RESET}"
+                )
+                search_type = {
+                    "1": SearchType.QUICK,
+                    "2": SearchType.DEEP,
+                    "3": SearchType.SELECTIVE,
+                }.get(search_type_input, SearchType.QUICK)
+
+                result = scraper.search_content(objective, url, search_type)
+            else:
+                result = scraper.search_content(objective, url)
+
+        elif mode == Mode.BATCH:
+            print(
+                f"{Colors.BLUE}Enter URLs (one per line, empty line to finish):{Colors.RESET}"
+            )
+            urls = []
+            while True:
+                url = input().strip()
+                if not url:
+                    break
+                urls.append(url)
+            if not urls:
+                urls = ["https://www.firecrawl.dev/"]
+            result = scraper.process(mode, url="", urls=urls)
+        elif mode == Mode.EXTRACT:
+            url = input(f"{Colors.BLUE}Enter the website URL: {Colors.RESET}")
+            if not url.strip():
+                url = "https://www.firecrawl.dev/"
+
+            print(
+                f"{Colors.BLUE}Enter selectors (one per line as 'name: selector', empty line to finish):{Colors.RESET}"
+            )
+            selectors = {}
+            while True:
+                line = input().strip()
+                if not line:
+                    break
+                try:
+                    name, selector = line.split(":", 1)
+                    selectors[name.strip()] = selector.strip()
+                except ValueError:
+                    print(
+                        f"{Colors.RED}Invalid format. Use 'name: selector'{Colors.RESET}"
+                    )
+
+            if not selectors:
+                selectors = {"title": "h1", "content": "article"}
+            result = scraper.process(mode, url, selectors=selectors)
+        else:  # Mode.ANALYZE
+            result = scraper.process(mode, url)
 
         if result:
             print(f"\n{Colors.MAGENTA}Results:{Colors.RESET}\n")

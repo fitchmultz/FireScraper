@@ -28,18 +28,46 @@ FireScraper/
 
 ### 1. `claude_scraper.py` - Intelligent Search & Content Analysis
 
-- **Purpose**: Unified tool for targeted search and content analysis
+- **Purpose**: Unified tool for web content extraction and analysis
 - **Modes**:
-  1. **Search Mode**: Find specific information across multiple pages
+
+  1. **Basic Search**: Quick information finding
+
      - Uses Claude AI for search optimization
+     - Best for simple queries where first match is sufficient
      - Combines site mapping and targeted scraping
-     - Extracts specific information based on user objectives
-  2. **Analyze Mode**: Deep content extraction from single pages
+
+  2. **Deep Search**: Advanced multi-mode search with three sub-types:
+
+     - **Quick**: Fast search using map endpoint (same as Basic Search)
+     - **Deep**: Analyzes top 5 pages with relevance scoring
+       - Content relevance scoring (0-100)
+       - Key points extraction
+       - Results sorted by relevance
+     - **Selective**: Smart CSS selector-based extraction
+       - Auto-generates optimal CSS selectors
+       - Extracts specific content elements
+       - Best for structured data (prices, specs, etc.)
+
+  3. **Analyze**: Single page deep analysis
+
      - Structured JSON output with metadata
      - Intelligent content organization
      - Markdown formatting preservation
-- **API Usage**: `map` and `scrape` endpoints
-- **Best For**: Both targeted searches and detailed page analysis
+
+  4. **Batch**: Process multiple URLs in parallel
+
+     - Parallel content extraction
+     - Consistent output format
+     - Automatic error handling
+
+  5. **Extract**: Custom content extraction
+     - User-defined CSS selectors
+     - Targeted content extraction
+     - Flexible output structure
+
+- **API Usage**: Utilizes multiple endpoints (`map`, `scrape`, `batch/scrape`, `extract`)
+- **Best For**: All content extraction needs from quick searches to detailed analysis
 
 ### 2. `crawl.py` - Full Website Archival
 
@@ -52,15 +80,141 @@ FireScraper/
 - **API Usage**: `crawl` endpoint
 - **Best For**: Archiving entire websites or sections
 
-## Key Differences
+## Key Differences Between Modes
 
-| Feature        | claude_scraper.py (Search) | claude_scraper.py (Analyze) | crawl.py       |
-| -------------- | -------------------------- | --------------------------- | -------------- |
-| API Endpoints  | map + scrape               | scrape only                 | crawl          |
-| AI Integration | Search & Analysis          | Content Structuring         | None           |
-| Scope          | Targeted Search            | Single Page                 | Full Site      |
-| Output         | Specific Information       | Structured JSON             | Markdown Files |
-| Storage        | Memory                     | Memory                      | File System    |
+| Feature          | Basic Search | Deep Search | Analyze | Batch  | Extract  |
+| ---------------- | ------------ | ----------- | ------- | ------ | -------- |
+| Speed            | Fast         | Slow        | Medium  | Fast   | Fast     |
+| Depth            | Surface      | Deep        | Deep    | Medium | Targeted |
+| Multiple Pages   | Yes          | Yes         | No      | Yes    | No       |
+| AI Analysis      | Basic        | Advanced    | Basic   | Basic  | No       |
+| Custom Selectors | No           | Optional    | No      | No     | Yes      |
+| Best For         | Quick Info   | Research    | Details | Bulk   | Specific |
+
+## Usage Examples
+
+### Intelligent Search & Analysis
+
+```bash
+python claude_scraper.py
+# Select mode:
+# 1. Search - Basic search for quick information
+# 2. Analyze - Detailed single page analysis
+# 3. Batch - Process multiple URLs in parallel
+# 4. Extract - Extract specific content using selectors
+# 5. Deep Search - Advanced search with multiple options
+#    - Quick: Fast search for simple queries
+#    - Deep: Detailed analysis of multiple pages
+#    - Selective: Smart selector-based extraction
+```
+
+### Full Site Crawl
+
+```bash
+python crawl.py <url>
+```
+
+## Output Formats
+
+1. **Basic/Quick Search**:
+
+   ```json
+   {
+     "source_url": "URL where information was found",
+     "relevant_info": "Extracted content",
+     "search_type": "quick",
+     "search_parameter": "Used search term"
+   }
+   ```
+
+2. **Deep Search**:
+
+   ```json
+   {
+     "search_type": "deep",
+     "results": [
+       {
+         "url": "Page URL",
+         "content": "Extracted content",
+         "analysis": {
+           "relevance_score": 85,
+           "key_points": ["Point 1", "Point 2"],
+           "matches_objective": true
+         }
+       }
+     ],
+     "total_analyzed": 5
+   }
+   ```
+
+3. **Selective Search**:
+
+   ```json
+   {
+     "search_type": "selective",
+     "selectors_used": {
+       "title": "h1.main-title",
+       "price": ".product-price"
+     },
+     "results": [
+       {
+         "url": "Page URL",
+         "extracted_content": {
+           "title": "Found title",
+           "price": "Found price"
+         }
+       }
+     ]
+   }
+   ```
+
+4. **Analyze Mode**:
+
+   ```json
+   {
+     "title": "Page title",
+     "description": "Brief description",
+     "content": "Main content in markdown",
+     "metadata": {
+       "last_updated": "Update date",
+       "author": "Author name",
+       "reading_time": "Estimated minutes"
+     }
+   }
+   ```
+
+5. **Batch Mode**:
+
+   ```json
+   [
+     {
+       "url": "Page URL",
+       "title": "Page title",
+       "content": "Processed content",
+       "metadata": { ... }
+     }
+   ]
+   ```
+
+6. **Extract Mode**:
+
+   ```json
+   {
+     "title": "Content matching title selector",
+     "content": "Content matching content selector",
+     "custom_field": "Content matching custom selector"
+   }
+   ```
+
+7. **crawl.py**:
+   Creates a directory structure:
+   ```txt
+   crawls/
+   └── domain.com/
+       ├── page1.md
+       ├── page2.md
+       └── visited_urls.txt
+   ```
 
 ## Setup
 
@@ -119,61 +273,6 @@ Common API commands (always use pnpm, not npm):
 2. Required API keys:
    - `FIRECRAWL_API_KEY` - For FireCrawl API access
    - `ANTHROPIC_API_KEY` - For Claude AI integration (not needed for crawl.py)
-
-## Usage Examples
-
-### Intelligent Search & Analysis
-
-```bash
-python claude_scraper.py
-# Select mode:
-# 1. Search - Find specific information across pages
-# 2. Analyze - Detailed analysis of a single page
-# Follow the prompts to enter URL and objectives
-```
-
-### Full Site Crawl
-
-```bash
-python crawl.py <url>
-```
-
-## Output Formats
-
-1. **claude_scraper.py (Search Mode)**:
-
-   ```json
-   {
-     "relevant_info": "Extracted information matching objective",
-     "source_url": "URL where information was found"
-   }
-   ```
-
-2. **claude_scraper.py (Analyze Mode)**:
-
-   ```json
-   {
-     "title": "Page title",
-     "description": "Brief description",
-     "content": "Main content in markdown",
-     "metadata": {
-       "last_updated": "Update date",
-       "author": "Author name",
-       "reading_time": "Estimated minutes"
-     }
-   }
-   ```
-
-3. **crawl.py**:
-   Creates a directory structure:
-
-   ```txt
-   crawls/
-   └── domain.com/
-       ├── page1.md
-       ├── page2.md
-       └── visited_urls.txt
-   ```
 
 ## Error Handling
 
