@@ -11,6 +11,17 @@ from urllib.parse import urljoin, urlparse
 import requests
 
 
+# ANSI color codes for better readability
+class Colors:
+    CYAN = "\033[96m"
+    YELLOW = "\033[93m"
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    MAGENTA = "\033[95m"
+    BLUE = "\033[94m"
+    RESET = "\033[0m"
+
+
 @dataclass
 class CrawlConfig:
     """Configuration for crawl behavior."""
@@ -55,6 +66,36 @@ class CrawlConfig:
             "includePatterns": self.include_patterns,
         }
 
+    def display_config(self):
+        """Display current configuration in a user-friendly format."""
+        print(f"\n{Colors.BLUE}Crawl Configuration:{Colors.RESET}")
+        print(f"  {Colors.CYAN}URL:{Colors.RESET} {self.url}")
+        print(f"  {Colors.CYAN}Max Depth:{Colors.RESET} {self.max_depth}")
+        print(
+            f"  {Colors.CYAN}Max Pages:{Colors.RESET} {self.max_pages or 'Unlimited'}"
+        )
+        print(
+            f"  {Colors.CYAN}External Links:{Colors.RESET} {'Allowed' if self.allow_external else 'Disallowed'}"
+        )
+        print(
+            f"  {Colors.CYAN}Subdomains:{Colors.RESET} {'Allowed' if self.allow_subdomains else 'Disallowed'}"
+        )
+        print(
+            f"  {Colors.CYAN}Languages:{Colors.RESET} {', '.join(self.languages) if self.languages else 'All'}"
+        )
+        if self.exclude_patterns:
+            print(
+                f"  {Colors.CYAN}Excluded Patterns:{Colors.RESET} {', '.join(self.exclude_patterns)}"
+            )
+        if self.include_patterns:
+            print(
+                f"  {Colors.CYAN}Included Patterns:{Colors.RESET} {', '.join(self.include_patterns)}"
+            )
+        print(f"  {Colors.CYAN}Output Directory:{Colors.RESET} {self.output_dir}")
+        print(
+            f"  {Colors.CYAN}Save HTML:{Colors.RESET} {'Yes' if self.save_raw_html else 'No'}\n"
+        )
+
 
 def is_english_page(url: str, metadata: dict, config: CrawlConfig) -> bool:
     """Check if a page matches the language requirements."""
@@ -91,7 +132,7 @@ def save_page(
     """Save a single page to disk."""
     # Skip pages that don't match language requirements
     if not is_english_page(url, metadata, config):
-        print(f"Skipped non-matching language page: {url}")
+        print(f"{Colors.YELLOW}Skipped non-matching language page: {url}{Colors.RESET}")
         return False
 
     url_path = urlparse(url).path
@@ -100,21 +141,25 @@ def save_page(
 
     # Don't overwrite existing files
     if filepath.exists():
-        print(f"Skipped existing file {filename}")
+        print(f"{Colors.YELLOW}Skipped existing file {filename}{Colors.RESET}")
         return False
 
-    # Save markdown content
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content)
+    try:
+        # Save markdown content
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
 
-    # Optionally save raw HTML
-    if config.save_raw_html and "rawHtml" in metadata:
-        html_filepath = output_dir / f"{filename}.html"
-        with open(html_filepath, "w", encoding="utf-8") as f:
-            f.write(metadata["rawHtml"])
+        # Optionally save raw HTML
+        if config.save_raw_html and "rawHtml" in metadata:
+            html_filepath = output_dir / f"{filename}.html"
+            with open(html_filepath, "w", encoding="utf-8") as f:
+                f.write(metadata["rawHtml"])
 
-    print(f"Saved {filename}")
-    return True
+        print(f"{Colors.GREEN}Saved {filename}{Colors.RESET}")
+        return True
+    except Exception as e:
+        print(f"{Colors.RED}Error saving {filename}: {str(e)}{Colors.RESET}")
+        return False
 
 
 def save_visited_urls(output_dir: Path, visited_urls: set):
@@ -126,74 +171,129 @@ def save_visited_urls(output_dir: Path, visited_urls: set):
 
 def crawl_and_save(config: CrawlConfig):
     """Crawl website and save content based on configuration."""
-    print(f"Starting crawl of {config.url} with configuration:")
-    print(json.dumps(config.to_api_params(), indent=2))
+    config.display_config()
+    print(f"{Colors.BLUE}Starting crawl of {config.url}{Colors.RESET}")
 
-    # Make the crawl request with configured parameters
-    response = requests.post(
-        "http://localhost:3002/v1/crawl", json=config.to_api_params()
-    )
+    try:
+        # Make the crawl request with configured parameters
+        print(f"{Colors.YELLOW}Initiating crawl request...{Colors.RESET}")
+        response = requests.post(
+            "http://localhost:3002/v1/crawl", json=config.to_api_params()
+        )
 
-    if not response.ok:
-        print(f"Error making crawl request: {response.text}")
-        return
-
-    print(f"Crawl request successful: {response.text}")
-    crawl_id = response.json()["id"]
-
-    # Create output directory
-    output_dir = Path(config.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Created output directory: {output_dir}")
-
-    # Track progress
-    saved_count = 0
-    visited_urls = set()
-    last_status = None
-    skipped_count = 0
-
-    # Wait for crawling to complete with progress updates
-    print("Waiting for crawl to complete...")
-    while True:
-        results = requests.get(f"http://localhost:3002/v1/crawl/{crawl_id}")
-        if not results.ok:
-            print(f"Error checking status: {results.text}")
+        if not response.ok:
+            print(
+                f"{Colors.RED}Error making crawl request: {response.text}{Colors.RESET}"
+            )
             return
 
-        status = results.json()
+        print(f"{Colors.GREEN}Crawl request successful!{Colors.RESET}")
+        crawl_id = response.json()["id"]
 
-        # Save new pages as they're completed
-        if "data" in status:
-            for item in status["data"]:
-                if "markdown" in item and "metadata" in item:
-                    url = item["metadata"]["url"]
-                    if url not in visited_urls:
-                        if save_page(
-                            output_dir, url, item["markdown"], item["metadata"], config
-                        ):
-                            saved_count += 1
-                        else:
-                            skipped_count += 1
-                        visited_urls.add(url)
+        # Create output directory
+        output_dir = Path(config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"{Colors.GREEN}Created output directory: {output_dir}{Colors.RESET}")
 
-        # Show progress
-        current_status = (status.get("completed", 0), status.get("total", 0))
-        if current_status != last_status:
+        # Track progress
+        saved_count = 0
+        visited_urls = set()
+        last_status = None
+        skipped_count = 0
+        error_count = 0
+
+        # Wait for crawling to complete with progress updates
+        print(f"\n{Colors.BLUE}Crawling in progress...{Colors.RESET}")
+        start_time = time.time()
+
+        try:
+            while True:
+                results = requests.get(f"http://localhost:3002/v1/crawl/{crawl_id}")
+                if not results.ok:
+                    print(
+                        f"{Colors.RED}Error checking status: {results.text}{Colors.RESET}"
+                    )
+                    return
+
+                status = results.json()
+
+                # Save new pages as they're completed
+                if "data" in status:
+                    for item in status["data"]:
+                        if "markdown" in item and "metadata" in item:
+                            url = item["metadata"]["url"]
+                            if url not in visited_urls:
+                                try:
+                                    if save_page(
+                                        output_dir,
+                                        url,
+                                        item["markdown"],
+                                        item["metadata"],
+                                        config,
+                                    ):
+                                        saved_count += 1
+                                    else:
+                                        skipped_count += 1
+                                except Exception as e:
+                                    print(
+                                        f"{Colors.RED}Error processing {url}: {str(e)}{Colors.RESET}"
+                                    )
+                                    error_count += 1
+                                visited_urls.add(url)
+
+                # Show progress with percentage
+                current_status = (status.get("completed", 0), status.get("total", 0))
+                if current_status != last_status:
+                    completed, total = current_status
+                    if total > 0:
+                        percentage = (completed / total) * 100
+                        elapsed_time = time.time() - start_time
+                        pages_per_second = (
+                            completed / elapsed_time if elapsed_time > 0 else 0
+                        )
+
+                        print(
+                            f"{Colors.CYAN}Progress: {completed}/{total} pages ({percentage:.1f}%) - "
+                            f"Rate: {pages_per_second:.1f} pages/sec{Colors.RESET}"
+                        )
+                        print(
+                            f"{Colors.GREEN}Saved: {saved_count} | "
+                            f"{Colors.YELLOW}Skipped: {skipped_count} | "
+                            f"{Colors.RED}Errors: {error_count}{Colors.RESET}"
+                        )
+                    last_status = current_status
+
+                if status.get("status") == "completed":
+                    break
+
+                time.sleep(config.check_interval)
+
+        except KeyboardInterrupt:
             print(
-                f"Progress: {current_status[0]}/{current_status[1]} pages crawled... ({saved_count} saved, {skipped_count} skipped)"
+                f"\n{Colors.YELLOW}Crawl interrupted by user. Saving progress...{Colors.RESET}"
             )
-            last_status = current_status
 
-        if status.get("status") == "completed":
-            break
+        finally:
+            # Save final list of visited URLs
+            save_visited_urls(output_dir, visited_urls)
+            elapsed_time = time.time() - start_time
 
-        time.sleep(config.check_interval)
+            print(f"\n{Colors.MAGENTA}Crawl Summary:{Colors.RESET}")
+            print(f"  {Colors.GREEN}✓ Saved: {saved_count} files{Colors.RESET}")
+            print(f"  {Colors.YELLOW}⚠ Skipped: {skipped_count} pages{Colors.RESET}")
+            print(f"  {Colors.RED}✗ Errors: {error_count} pages{Colors.RESET}")
+            print(f"  {Colors.BLUE}• Total URLs: {len(visited_urls)}{Colors.RESET}")
+            print(
+                f"  {Colors.BLUE}• Time taken: {elapsed_time:.1f} seconds{Colors.RESET}"
+            )
+            print(
+                f"  {Colors.BLUE}• Average speed: {len(visited_urls)/elapsed_time:.1f} pages/sec{Colors.RESET}"
+            )
+            print(f"  {Colors.GREEN}• Output directory: {output_dir}{Colors.RESET}\n")
 
-    # Save final list of visited URLs
-    save_visited_urls(output_dir, visited_urls)
-    print(f"\nFinished! Saved {saved_count} files to {output_dir}")
-    print(f"Skipped {skipped_count} non-matching or duplicate pages")
-    print(f"Total unique URLs visited: {len(visited_urls)}")
+    except Exception as e:
+        print(f"{Colors.RED}Fatal error: {str(e)}{Colors.RESET}")
+        sys.exit(1)
 
 
 def parse_args():
