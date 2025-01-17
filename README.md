@@ -276,7 +276,7 @@ The crawler now offers two modes of operation:
 
 **Interactive Mode Sections:**
 
-```
+```bash
 === Web Crawler Configuration ===
 • URL Configuration
   - Website URL to crawl
