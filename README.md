@@ -79,6 +79,72 @@ FireScraper/
   - File system organization
 - **API Usage**: `crawl` endpoint
 - **Best For**: Archiving entire websites or sections
+- **Configuration Options**:
+
+  ```bash
+  # Basic Usage
+  python crawl.py https://example.com
+
+  # Full Options
+  python crawl.py <url> [options]
+
+  # Crawl Behavior Options:
+  --max-depth N        # Maximum depth to crawl (default: 10)
+  --max-pages N        # Maximum number of pages to crawl
+  --allow-external     # Allow crawling external links
+  --no-subdomains     # Don't crawl subdomains
+
+  # Content Filtering:
+  --languages LANGS    # Languages to include (e.g., "en es fr")
+                      # Default: en only
+  --exclude PATTERNS  # URL patterns to exclude
+                      # Example: --exclude "/blog/*" "/archive/*"
+  --include PATTERNS  # URL patterns to include
+                      # Example: --include "/docs/*" "/api/*"
+
+  # Output Options:
+  --output-dir DIR    # Custom output directory
+                      # Default: crawls/<domain>
+  --save-html         # Also save raw HTML content
+  --check-interval N  # Seconds between progress checks (default: 5)
+
+  # API Options:
+  --timeout N         # API timeout in milliseconds (default: 30000)
+  ```
+
+- **Example Usage**:
+
+  ```bash
+  # Basic crawl of a documentation site
+  python crawl.py https://docs.example.com
+
+  # Advanced crawl with filtering
+  python crawl.py https://example.com \
+    --max-depth 5 \
+    --languages en es \
+    --exclude "/blog/*" "/archive/*" \
+    --include "/docs/*" \
+    --save-html \
+    --output-dir ./my-crawl
+
+  # Full site archive with external links
+  python crawl.py https://example.com \
+    --allow-external \
+    --max-pages 1000 \
+    --languages en fr \
+    --save-html
+  ```
+
+- **Output Structure**:
+
+  ```txt
+  output-dir/
+  ├── page1.md           # Markdown content
+  ├── page1.html         # Original HTML (if --save-html)
+  ├── page2.md
+  ├── page2.html
+  └── visited_urls.txt   # List of all processed URLs
+  ```
 
 ## Key Differences Between Modes
 
@@ -91,6 +157,77 @@ FireScraper/
 | Custom Selectors | No           | Optional    | No      | No     | Yes      |
 | Best For         | Quick Info   | Research    | Details | Bulk   | Specific |
 
+## Example Use Cases
+
+### Basic Search (Mode 1)
+
+- **When to use**: Quick fact-finding, simple information retrieval
+- **Examples**:
+  - "Find the pricing plans on a SaaS website"
+  - "What are the system requirements for this software?"
+  - "Find contact information on a company website"
+- **Why**: Fast results when you need a simple answer and the first good match is likely sufficient
+
+### Deep Search (Mode 2)
+
+- **Quick Search Type**:
+
+  - Same as Basic Search but with option to try other search types if needed
+  - Good starting point when unsure which search type to use
+
+- **Deep Search Type**:
+
+  - **When to use**: Research tasks, comprehensive information gathering
+  - **Examples**:
+    - "Compare all pricing mentions across the site to find the best plan"
+    - "Find all security-related information across documentation"
+    - "Gather all API endpoint examples from the docs"
+  - **Why**: Analyzes multiple pages thoroughly, ranks relevance, extracts key points
+
+- **Selective Search Type**:
+  - **When to use**: Finding specific types of content that follow a pattern
+  - **Examples**:
+    - "Extract all product prices and their features"
+    - "Find all API endpoint definitions and their parameters"
+    - "Gather all code examples from documentation"
+  - **Why**: Auto-generates and uses CSS selectors to find specific content patterns
+
+### Analyze (Mode 3)
+
+- **When to use**: Deep understanding of a single, known page
+- **Examples**:
+  - "Extract all information from a detailed product page"
+  - "Convert a documentation page to structured format"
+  - "Get a complete breakdown of a blog post with metadata"
+- **Why**: Provides the most detailed analysis of a single page with metadata
+
+### Batch (Mode 4)
+
+- **When to use**: Processing a known list of URLs similarly
+- **Examples**:
+  - "Analyze all blog posts from a list of URLs"
+  - "Extract content from multiple product pages"
+  - "Process a list of documentation pages"
+- **Why**: Efficiently handles multiple URLs when you already know which pages you want
+
+### Extract (Mode 5)
+
+- **When to use**: Extracting specific elements with known selectors
+- **Examples**:
+  - "Get all h2 headers and their following paragraphs"
+  - "Extract specific table data using CSS selectors"
+  - "Pull out all elements with a certain class"
+- **Why**: Most precise when you know exactly what HTML elements you want
+
+### Full Site Crawl (`crawl.py`)
+
+- **When to use**: Complete website archival or full-site processing
+- **Examples**:
+  - "Download all documentation pages as markdown"
+  - "Archive an entire blog"
+  - "Create a local copy of a website's content"
+- **Why**: Handles entire websites with proper file organization
+
 ## Usage Examples
 
 ### Intelligent Search & Analysis
@@ -99,13 +236,13 @@ FireScraper/
 python claude_scraper.py
 # Select mode:
 # 1. Search - Basic search for quick information
-# 2. Analyze - Detailed single page analysis
-# 3. Batch - Process multiple URLs in parallel
-# 4. Extract - Extract specific content using selectors
-# 5. Deep Search - Advanced search with multiple options
+# 2. Deep Search - Advanced search with multiple options
 #    - Quick: Fast search for simple queries
 #    - Deep: Detailed analysis of multiple pages
 #    - Selective: Smart selector-based extraction
+# 3. Analyze - Detailed single page analysis
+# 4. Batch - Process multiple URLs in parallel
+# 5. Extract - Extract specific content using selectors
 ```
 
 ### Full Site Crawl
@@ -208,6 +345,7 @@ python crawl.py <url>
 
 7. **crawl.py**:
    Creates a directory structure:
+
    ```txt
    crawls/
    └── domain.com/

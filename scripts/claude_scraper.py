@@ -425,26 +425,24 @@ def main():
 
         print(f"{Colors.BLUE}Select mode:{Colors.RESET}")
         print(
-            f"1. {Colors.CYAN}Search{Colors.RESET} - Find specific information across pages"
+            f"1. {Colors.CYAN}Search{Colors.RESET} - Basic search for quick information"
+        )
+        print(f"2. {Colors.CYAN}Deep Search{Colors.RESET} - Advanced multi-mode search")
+        print(f"3. {Colors.CYAN}Analyze{Colors.RESET} - Detailed single page analysis")
+        print(
+            f"4. {Colors.CYAN}Batch{Colors.RESET} - Process multiple URLs in parallel"
         )
         print(
-            f"2. {Colors.CYAN}Analyze{Colors.RESET} - Detailed analysis of a single page"
+            f"5. {Colors.CYAN}Extract{Colors.RESET} - Extract specific content using selectors"
         )
-        print(
-            f"3. {Colors.CYAN}Batch{Colors.RESET} - Process multiple URLs in parallel"
-        )
-        print(
-            f"4. {Colors.CYAN}Extract{Colors.RESET} - Extract specific content using selectors"
-        )
-        print(f"5. {Colors.CYAN}Deep Search{Colors.RESET} - Advanced multi-mode search")
 
         mode_input = input(f"{Colors.BLUE}Enter mode (1-5): {Colors.RESET}")
         mode = {
             "1": Mode.SEARCH,
-            "2": Mode.ANALYZE,
-            "3": Mode.BATCH,
-            "4": Mode.EXTRACT,
-            "5": Mode.DEEP_SEARCH,
+            "2": Mode.DEEP_SEARCH,
+            "3": Mode.ANALYZE,
+            "4": Mode.BATCH,
+            "5": Mode.EXTRACT,
         }.get(mode_input, Mode.ANALYZE)
 
         if mode in [Mode.SEARCH, Mode.DEEP_SEARCH]:
