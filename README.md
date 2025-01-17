@@ -17,37 +17,31 @@ FireScraper/
 ├── docs/                   # Documentation
 │   └── API_REFERENCE.md    # API endpoint documentation
 ├── scripts/                # Utility scripts
-│   ├── claude_firecrawl.py  # Intelligent search and extraction
-│   ├── claude_scrape_page.py # Single page analysis
-│   └── crawl.py             # Full site archival
+│   ├── claude_scraper.py   # Intelligent search and content analysis
+│   └── crawl.py           # Full site archival
 ├── .env.example           # Example environment variables for Python scripts
-├── README.md               # Project overview
-└── requirements.txt        # Python dependencies
+├── README.md              # Project overview
+└── requirements.txt       # Python dependencies
 ```
 
 ## Scripts Overview
 
-### 1. `claude_firecrawl.py` - Intelligent Search & Content Extraction
+### 1. `claude_scraper.py` - Intelligent Search & Content Analysis
 
-- **Purpose**: Targeted search and intelligent content extraction based on specific objectives
-- **Key Features**:
-  - Uses Claude AI for search optimization and content analysis
-  - Combines site mapping and targeted scraping
-  - Extracts specific information based on user objectives
+- **Purpose**: Unified tool for targeted search and content analysis
+- **Modes**:
+  1. **Search Mode**: Find specific information across multiple pages
+     - Uses Claude AI for search optimization
+     - Combines site mapping and targeted scraping
+     - Extracts specific information based on user objectives
+  2. **Analyze Mode**: Deep content extraction from single pages
+     - Structured JSON output with metadata
+     - Intelligent content organization
+     - Markdown formatting preservation
 - **API Usage**: `map` and `scrape` endpoints
-- **Best For**: Finding specific information across a website
+- **Best For**: Both targeted searches and detailed page analysis
 
-### 2. `claude_scrape_page.py` - Detailed Single Page Analysis
-
-- **Purpose**: Deep content extraction and structuring from individual pages
-- **Key Features**:
-  - Structured JSON output with metadata
-  - Intelligent content organization
-  - Markdown formatting preservation
-- **API Usage**: `scrape` endpoint
-- **Best For**: Detailed analysis and structuring of single web pages
-
-### 3. `crawl.py` - Full Website Archival
+### 2. `crawl.py` - Full Website Archival
 
 - **Purpose**: Bulk website crawling and content archiving
 - **Key Features**:
@@ -60,13 +54,13 @@ FireScraper/
 
 ## Key Differences
 
-| Feature        | claude_firecrawl.py  | claude_scrape_page.py | crawl.py       |
-| -------------- | -------------------- | --------------------- | -------------- |
-| API Endpoints  | map + scrape         | scrape only           | crawl          |
-| AI Integration | Search & Analysis    | Content Structuring   | None           |
-| Scope          | Targeted Search      | Single Page           | Full Site      |
-| Output         | Specific Information | Structured JSON       | Markdown Files |
-| Storage        | Memory               | Memory                | File System    |
+| Feature        | claude_scraper.py (Search) | claude_scraper.py (Analyze) | crawl.py       |
+| -------------- | -------------------------- | --------------------------- | -------------- |
+| API Endpoints  | map + scrape               | scrape only                 | crawl          |
+| AI Integration | Search & Analysis          | Content Structuring         | None           |
+| Scope          | Targeted Search            | Single Page                 | Full Site      |
+| Output         | Specific Information       | Structured JSON             | Markdown Files |
+| Storage        | Memory                     | Memory                      | File System    |
 
 ## Setup
 
@@ -128,29 +122,25 @@ Common API commands (always use pnpm, not npm):
 
 ## Usage Examples
 
-### Intelligent Search
+### Intelligent Search & Analysis
 
-```python
-python claude_firecrawl.py
-# Enter website and search objective when prompted
-```
-
-### Single Page Analysis
-
-```python
-python claude_scrape_page.py
-# Enter URL when prompted
+```bash
+python claude_scraper.py
+# Select mode:
+# 1. Search - Find specific information across pages
+# 2. Analyze - Detailed analysis of a single page
+# Follow the prompts to enter URL and objectives
 ```
 
 ### Full Site Crawl
 
-```python
+```bash
 python crawl.py <url>
 ```
 
 ## Output Formats
 
-1. **claude_firecrawl.py**:
+1. **claude_scraper.py (Search Mode)**:
 
    ```json
    {
@@ -159,7 +149,7 @@ python crawl.py <url>
    }
    ```
 
-2. **claude_scrape_page.py**:
+2. **claude_scraper.py (Analyze Mode)**:
 
    ```json
    {
@@ -175,16 +165,15 @@ python crawl.py <url>
    ```
 
 3. **crawl.py**:
+   Creates a directory structure:
 
-- Creates a directory structure:
-
-  ```txt
-  crawls/
-  └── domain.com/
-      ├── page1.md
-      ├── page2.md
-      └── visited_urls.txt
-  ```
+   ```txt
+   crawls/
+   └── domain.com/
+       ├── page1.md
+       ├── page2.md
+       └── visited_urls.txt
+   ```
 
 ## Error Handling
 
