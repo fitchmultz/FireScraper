@@ -305,10 +305,9 @@ def crawl_and_save(config: CrawlConfig):
 
     try:
         # Make the crawl request with configured parameters
-        print(f"{Colors.YELLOW}Initiating crawl request...{Colors.RESET}")
-        response = requests.post(
-            "http://localhost:3002/v1/crawl", json=config.to_api_params()
-        )
+        api_params = config.to_api_params()
+
+        response = requests.post("http://localhost:3002/v1/crawl", json=api_params)
 
         if not response.ok:
             print(
@@ -351,6 +350,10 @@ def crawl_and_save(config: CrawlConfig):
                     for item in status["data"]:
                         if "markdown" in item and "metadata" in item:
                             url = item["metadata"]["url"]
+                            print(f"{Colors.YELLOW}Processing URL: {url}{Colors.RESET}")
+                            print(
+                                f"{Colors.YELLOW}Markdown content length: {len(item['markdown'])}{Colors.RESET}"
+                            )
                             if url not in visited_urls:
                                 try:
                                     if save_page(

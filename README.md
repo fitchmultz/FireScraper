@@ -16,13 +16,108 @@ FireScraper/
 │   └── pnpm-lock.yaml     # Lock file
 ├── docs/                   # Documentation
 │   └── API_REFERENCE.md    # API endpoint documentation
-├── scripts/                # Utility scripts
-│   ├── claude_scraper.py   # Intelligent search and content analysis
-│   └── crawl.py           # Full site archival
-├── .env.example           # Example environment variables for Python scripts
+├── modules/                # Python modules
+│   ├── __init__.py        # Package exports
+│   ├── cli.py             # Command-line interface
+│   ├── utils.py           # Shared utilities
+│   ├── crawl.py           # Website crawler
+│   └── claude_scraper.py  # Intelligent search
+├── firescraper.py         # Main CLI entry point
+├── .env.example           # Example environment variables
 ├── README.md              # Project overview
 └── requirements.txt       # Python dependencies
 ```
+
+## Architecture
+
+FireScraper is organized into modular components for better maintainability and reusability:
+
+### Core Modules
+
+1. **CLI Module** (`modules/cli.py`)
+
+   - Command-line argument parsing
+   - Subcommand configuration
+   - Help text and documentation
+
+2. **Utils Module** (`modules/utils.py`)
+
+   - Shared utilities and helpers
+   - Color formatting for terminal output
+   - Error handling utilities
+
+3. **Crawler Module** (`modules/crawl.py`)
+
+   - Full website crawling
+   - Content archival
+   - URL filtering and management
+
+4. **Intelligent Search** (`modules/claude_scraper.py`)
+   - AI-powered content analysis
+   - Multi-mode search capabilities
+   - Structured data extraction
+
+### Main Interface
+
+The `firescraper.py` script serves as the unified command-line interface, integrating all modules into a cohesive tool.
+
+## Command-Line Interface
+
+```bash
+python firescraper.py [command] [options]
+```
+
+### Global Options
+
+- `-v, --verbose`: Enable verbose output and debugging information
+
+### Commands
+
+1. **crawl** - Crawl and archive a website
+
+   ```bash
+   python firescraper.py crawl [url] [options]
+
+   Options:
+     --max-depth N        Maximum crawl depth (default: 10)
+     --max-pages N        Maximum number of pages to crawl
+     --allow-external     Allow crawling external links
+     --no-subdomains     Disallow crawling subdomains
+     --languages LANG     Languages to include (space-separated, default: en)
+     --exclude PATTERN    URL patterns to exclude (space-separated)
+     --include PATTERN    URL patterns to include (space-separated)
+     --output-dir DIR     Output directory (default: crawls/<domain>)
+     --save-html         Save raw HTML files
+     --check-interval N   Progress check interval in seconds (default: 5)
+     --timeout N         API timeout in milliseconds (default: 30000)
+   ```
+
+2. **search** - Search through crawled content
+
+   ```bash
+   python firescraper.py search [url] [objective] [options]
+
+   Options:
+     --type TYPE         Type of search: quick, deep, or selective (default: quick)
+   ```
+
+3. **analyze** - Analyze a single page
+
+   ```bash
+   python firescraper.py analyze [url]
+   ```
+
+4. **batch** - Process multiple URLs in parallel
+
+   ```bash
+   python firescraper.py batch [urls...]
+   ```
+
+5. **extract** - Extract specific content using selectors
+
+   ```bash
+   python firescraper.py extract [url] --selectors '{"title": "h1", "content": ".main-content"}'
+   ```
 
 ## Scripts Overview
 
