@@ -517,6 +517,9 @@ def main():
                 selectors = {"title": "h1", "content": "article"}
             result = scraper.process(mode, url, selectors=selectors)
         else:  # Mode.ANALYZE
+            url = input(f"{Colors.BLUE}Enter the website URL: {Colors.RESET}")
+            if not url.strip():
+                url = "https://www.firecrawl.dev/"
             result = scraper.process(mode, url)
 
         if result:
